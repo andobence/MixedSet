@@ -5,7 +5,7 @@
 class BitVectorSet
 {
 public:
-	BitVectorSet(size_t size) : m_data(size)
+	BitVectorSet(size_t size) : m_data((size + 7) / 8)
 	{
 	}
 
@@ -49,7 +49,7 @@ public:
 		return true;
 	}
 
-	bool has(size_t index)
+	bool contains(size_t index)
 	{
 		auto& byte = m_data[index / 8];
 		uint8_t bitMask = 1 << (index % 8);
