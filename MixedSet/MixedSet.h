@@ -1,6 +1,7 @@
 #pragma once
 #include "BitVectorSet.h"
 #include "HashSet.h"
+#include "List.h"
 
 template<typename T, typename Linearizer>
 class MixedSet

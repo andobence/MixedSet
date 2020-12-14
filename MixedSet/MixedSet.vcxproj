@@ -146,10 +146,12 @@
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Test1.cpp" />
     <ClCompile Include="Test2.cpp" />
+    <ClCompile Include="TestList.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BitVectorSet.h" />
     <ClInclude Include="HashSet.h" />
+    <ClInclude Include="List.h" />
     <ClInclude Include="MixedSet.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
