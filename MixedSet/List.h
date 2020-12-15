@@ -41,19 +41,20 @@ public:
 
 	bool contains(const T& value) const
 	{
-		SharedLock currentLock, nextLock;
+		SharedLock currentLock{ m_headMutex }, nextLock;
 		auto currentNode = m_head;
 		if (currentNode) nextLock = SharedLock{ currentNode->m_mutex };
 		while (currentNode)
 		{
 			currentLock = std::move(nextLock);
 			auto nextNode = currentNode->m_next;
-			if (nextNode) nextLock = SharedLock{ nextNode->m_mutex };
+			if (nextNode)
+				nextLock = SharedLock{ nextNode->m_mutex };
+
 			auto valueIter = currentNode->find(value);
-			if (valueIter != currentNode->m_contents.end() && *valueIter == value)
-			{
+			if (valueIter != currentNode->end() && *valueIter == value)
 				return true;
-			}
+
 			currentNode = nextNode;
 		}
 		return false;
@@ -68,9 +69,9 @@ private:
 
 	bool insert_private(const T& value)
 	{
-		UniqueLock currentLock, nextLock;
+		UniqueLock currentLock{ m_headMutex };
 		auto currentNode = m_head;
-		if (currentNode) nextLock = UniqueLock{ currentNode->m_mutex };
+		UniqueLock nextLock{ currentNode->m_mutex };
 		decltype(currentNode) tail;
 		while (currentNode)
 		{
@@ -79,56 +80,24 @@ private:
 			auto nextNode = currentNode->m_next;
 			if (nextNode) nextLock = UniqueLock{ nextNode->m_mutex };
 
-			auto& contents = currentNode->m_contents;
 			auto valueIter = currentNode->find(value);
 			if (valueIter != currentNode->end())
 			{
 				if (*valueIter == value)
-				{
 					return false;
-				}
-				else if (currentNode->m_size < Size)
+
+				if (currentNode->m_size < Size)
 				{
 					currentNode->insert(value, valueIter);
-					return true;
 				}
 				else
 				{
-					auto newNode = std::make_shared<Node>();
-					newNode->m_next = nextNode;
-					std::size_t pos = valueIter - contents.begin();
-					std::size_t midPos = currentNode->m_size / 2;
-
-					if (pos < midPos)
-					{
-						std::copy(
-							contents.begin() + midPos,
-							contents.end(),
-							newNode->m_contents.begin());
-						newNode->m_size = currentNode->m_size - midPos;
-						currentNode->m_size = midPos;
-						currentNode->insert(value, valueIter);
-					}
-					else
-					{
-						std::copy(
-							contents.begin() + midPos,
-							contents.begin() + pos,
-							newNode->m_contents.begin());
-						newNode->m_contents[pos - midPos] = value;
-						std::copy(
-							contents.begin() + pos,
-							contents.end(),
-							newNode->m_contents.begin() + pos - midPos + 1);
-						currentNode->m_size = midPos;
-						newNode->m_size = Size - midPos + 1;
-					}
-
-					currentNode->m_next = newNode;
-					return true;
+					currentNode->insert_and_split(value, valueIter);
 				}
+
+				return true;
 			}
-			else if (valueIter != contents.end() && 
+			else if (valueIter != currentNode->m_contents.end() &&
 				(!nextNode || value < nextNode->m_contents.front()))
 			{
 				*valueIter = value;
@@ -146,7 +115,7 @@ private:
 
 	bool erase_private(const T& value)
 	{
-		UniqueLock prevLock, currentLock;
+		UniqueLock prevLock, currentLock{ m_headMutex };
 		auto currentNode = m_head;
 		decltype(currentNode) prevNode;
 		while (currentNode)
@@ -159,31 +128,34 @@ private:
 			if (valueIter != currentNode->end())
 			{
 				if (*valueIter != value)
-				{
 					return false;
-				}
-				else
+
+				currentNode->erase(valueIter);
+				if (currentNode->m_size == 0)
 				{
-					currentNode->erase(valueIter);
-					if (currentNode->m_size == 0)
+					if (prevNode)
 					{
-						if (prevNode)
-						{
-							prevNode->m_next = currentNode->m_next;
-						}
-						else // !prevNode ==> currentNode == m_head
-						{
-							m_head = m_head->m_next; // remove the first list element
-						}
+						prevNode->m_next = currentNode->m_next;
 					}
-					currentLock.unlock();
-					return true;
+					else if (m_head->m_next) // !prevNode ==> currentNode == m_head
+					{
+						m_head = m_head->m_next; // remove the first list element
+					}
 				}
+				currentLock.unlock();
+				return true;
 			}
-			else if (currentNode->m_next && currentNode->m_next->m_contents[0] > value)
-			{
-				return false;
-			}
+			else 
+            {
+                if (auto nextNode = currentNode->m_next)
+                {
+                    auto nextLock = SharedLock{ nextNode->m_mutex };
+                    if (nextNode->m_contents.front() > value)
+                    {
+                        return false;
+                    }
+                }
+            }
 
 			prevNode = currentNode;
 			currentNode = currentNode->m_next;
@@ -233,6 +205,41 @@ private:
 			++m_size;
 		}
 
+		void insert_and_split(const T& value, typename decltype(m_contents)::iterator iter)
+		{
+			auto newNode = std::make_shared<Node>();
+			newNode->m_next = m_next;
+			std::size_t pos = iter - m_contents.begin();
+			std::size_t midPos = m_size / 2;
+
+			if (pos < midPos)
+			{
+				std::copy(
+					m_contents.begin() + midPos,
+					m_contents.end(),
+					newNode->m_contents.begin());
+				newNode->m_size = m_size - midPos;
+				m_size = midPos;
+				insert(value, iter);
+			}
+			else
+			{
+				std::copy(
+					m_contents.begin() + midPos,
+					m_contents.begin() + pos,
+					newNode->m_contents.begin());
+				newNode->m_contents[pos - midPos] = value;
+				std::copy(
+					m_contents.begin() + pos,
+					m_contents.end(),
+					newNode->m_contents.begin() + pos - midPos + 1);
+				m_size = midPos;
+				newNode->m_size = Size - midPos + 1;
+			}
+
+			m_next = newNode;
+		}
+
 		void erase(typename decltype(m_contents)::iterator iter)
 		{
 			--m_size;
@@ -244,6 +251,7 @@ private:
 		}
 	};
 
+	mutable Mutex m_headMutex;
 	std::shared_ptr<Node> m_head;
 	std::atomic<std::size_t> m_size;
 };
