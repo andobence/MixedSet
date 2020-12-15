@@ -8,8 +8,8 @@
 
 template<
 	typename T,
-	typename Less,
-	std::size_t Size = 128
+	std::size_t Size = 128,
+	typename Less = std::less<T>
 >
 class List
 {

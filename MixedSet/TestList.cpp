@@ -12,7 +12,7 @@ namespace
 {
 	auto IntList()
 	{
-		return List<int, std::less<int>>();
+		return List<int>();
 	}
 	auto RandInt(int from, int to)
 	{

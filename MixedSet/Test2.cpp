@@ -6,9 +6,19 @@ struct vec3
 {
 	int x, y, z;
 
+	auto asTuple() const
+	{
+		return std::make_tuple(x, y, z);
+	}
+
 	bool operator==(const vec3& rhs) const
 	{
-		return x == rhs.x && y == rhs.y && z == rhs.z;
+		return asTuple() == rhs.asTuple();
+	}
+
+	bool operator<(const vec3& rhs) const
+	{
+		return asTuple() < rhs.asTuple();
 	}
 };
 
@@ -50,7 +60,7 @@ void Test2()
 {
 	MixedSet<vec3, Vec3Linearizer> set;
 
-	for (int i = 0; i < 1024; i++)
+	for (int i = 0; i < 1024*1024*2; i++)
 	{
 		set.insert({ i, 0, 0 });
 	}
