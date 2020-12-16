@@ -37,9 +37,13 @@ class HashSet
 
 public:
 	HashSet(size_t startBucketSize = 32, Hasher hasher = {})
-		: m_buckets(startBucketSize), m_hasher(std::move(hasher))
+		: m_hasher(std::move(hasher))
 	{
 		assert(startBucketSize > 0);
+		for (size_t i = 0; i < startBucketSize; i++)
+		{
+			m_buckets.emplace_back(std::make_unique<Bucket>());
+		}
 	}
 
 	bool insert(T elem)
@@ -51,7 +55,7 @@ public:
 
 		auto bucketIdx = bucket(hash);
 
-		bool ret = m_buckets[bucketIdx].insert({ reverseHash, elem });
+		bool ret = m_buckets[bucketIdx]->insert({ reverseHash, elem });
 		if (ret) m_size++;
 
 		if (private_load_factor() > max_load_factor())
@@ -72,7 +76,7 @@ public:
 
 		auto bucketIdx = bucket(hash);
 		
-		bool ret = m_buckets[bucketIdx].erase({ reverseHash, elem });
+		bool ret = m_buckets[bucketIdx]->erase({ reverseHash, elem });
 		if (ret) m_size--;
 
 		return ret;
@@ -87,7 +91,7 @@ public:
 
 		auto bucketIdx = bucket(hash);
 
-		return m_buckets[bucketIdx].contains({ reverseHash, elem });
+		return m_buckets[bucketIdx]->contains({ reverseHash, elem });
 	}
 
 	float load_factor() const
@@ -142,14 +146,24 @@ private:
 
 	void try_extend_buckets()
 	{
-		// UniqueLock lock{ m_bucketsMutex };
-		// 
-		// if (private_load_factor() <= max_load_factor())
-		// 	return;
+		UniqueLock lock{ m_bucketsMutex };
+		
+		if (private_load_factor() <= max_load_factor())
+			return;
+
+		size_t newBucketIdx = m_buckets.size();
+		size_t lowerBucket = newBucketIdx - std::bit_floor(newBucketIdx);
+		auto& newBucket = m_buckets.emplace_back(std::make_unique<Bucket>());
+
+		Hash hash = reverse(static_cast<Hash>(newBucketIdx));
+		m_buckets[lowerBucket]->split_after(*newBucket, [&hash](const std::pair<Hash, T>& p)
+		{
+			return p.first >= hash;
+		});
 	}
 
 	std::atomic<std::size_t> m_size;
-	std::vector<Bucket> m_buckets;
+	std::vector<std::unique_ptr<Bucket>> m_buckets;
 	mutable Mutex m_bucketsMutex;
 	Hasher m_hasher;
 

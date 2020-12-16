@@ -65,8 +65,13 @@ public:
 		return m_size.load();
 	}
 
-private:
+	template<typename F>
+	void split_after(List& upperPart, F&& f)
+	{
+		// TODO: cut the list after the last element e for which f(e) is false.
+	}
 
+private:
 	bool insert_private(const T& value)
 	{
 		UniqueLock currentLock{ m_headMutex };
