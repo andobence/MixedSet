@@ -1,13 +1,14 @@
 #include "MixedSet.h"
 #include <iostream>
+#define CATCH_CONFIG_RUNNER
+#include "catch.hpp"
 
-int main()
-{
-	extern bool Test1();
-	extern void Test2();
-	extern void TestList();
+int main(int argc, char* argv[]) {
+	// global setup...
 
-	//Test1();
-	//Test2();
-	TestList();
+	int result = Catch::Session().run(argc, argv);
+
+	// global clean-up...
+
+	return result;
 }

@@ -5,12 +5,15 @@
 class BitVectorSet
 {
 public:
-	BitVectorSet(size_t size) : m_data((size + 7) / 8)
+	BitVectorSet(size_t size) : m_data((size + 7) / 8), m_size(size)
 	{
 	}
 
 	bool insert(size_t index)
 	{
+		if (index >= m_size)
+			return false;
+
 		auto& byte = m_data[index / 8];
 		uint8_t bitMask = 1 << (index % 8);
 
@@ -31,6 +34,9 @@ public:
 
 	bool erase(size_t index)
 	{
+		if (index >= m_size)
+			return false;
+
 		auto& byte = m_data[index / 8];
 		uint8_t bitMask = 1 << (index % 8);
 
@@ -51,6 +57,9 @@ public:
 
 	bool contains(size_t index)
 	{
+		if (index >= m_size)
+			return false;
+
 		auto& byte = m_data[index / 8];
 		uint8_t bitMask = 1 << (index % 8);
 
@@ -61,4 +70,5 @@ public:
 
 private:
 	std::vector<std::atomic<uint8_t>> m_data;
+	size_t m_size;
 };

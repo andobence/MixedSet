@@ -7,6 +7,7 @@
 #include <vector>
 #include <fstream>
 #include <execution>
+#include "catch.hpp"
 
 namespace
 {
@@ -46,10 +47,9 @@ namespace
 	}
 }
 
-void TestSequentialAdd()
+TEST_CASE("Sequential add", "[list]")
 {
-
-	std::cout << "Inserting numbers from 1 to N\n";
+	DYNAMIC_SECTION("Inserting numbers from 1 to " << N)
 	{
 		auto list = IntList();
 
@@ -58,15 +58,15 @@ void TestSequentialAdd()
 			list.insert(i);
 		}
 
-		assert(list.size() == N);
+		REQUIRE(list.size() == N);
 
 		for (int i = 1; i <= N; ++i)
 		{
-			assert(list.contains(i));
+			REQUIRE(list.contains(i));
 		}
 	}
 
-	std::cout << "Inserting N uniformly random integers between 1 and M\n";
+	DYNAMIC_SECTION("Inserting " << N << " uniformly random integers between 1 and " << M)
 	{
 		auto randomSequence = GetRandomSequence(1, M);
 
@@ -77,21 +77,23 @@ void TestSequentialAdd()
 		for (const auto& random : randomSequence)
 		{
 			++i;
+
 			auto [_, insertedIntoSet] = set.insert(random);
 			bool insertedIntoList = list.insert(random);
-			
+
 			if (insertedIntoSet != insertedIntoList)
 			{
 				SaveRandomSequence(randomSequence);
-				assert(false && i);
-				return;
+
+				INFO("i = " << i);
+				REQUIRE(insertedIntoSet != insertedIntoList);
 			}
 		}
 
-		assert(set.size() == list.size());
+		REQUIRE(set.size() == list.size());
 	}
 
-	std::cout << "Inserting numbers from N to 1\n";
+	DYNAMIC_SECTION("Inserting numbers from " << N << " to 1")
 	{
 		auto list = IntList();
 
@@ -100,18 +102,18 @@ void TestSequentialAdd()
 			list.insert(i);
 		}
 
-		assert(list.size() == N);
+		REQUIRE(list.size() == N);
 
 		for (int i = N; i >= 1; --i)
 		{
-			assert(list.contains(i));
+			REQUIRE(list.contains(i));
 		}
 	}
 }
 
-void TestParallelAdd()
+TEST_CASE("Parallel add", "[list]")
 {
-	std::cout << "Inserting N uniformly random numbers from 1 to M parallelly\n";
+	DYNAMIC_SECTION("Inserting " << N << " uniformly random numbers from 1 to " << M << " parallelly")
 	{
 		auto randomSequence = GetRandomSequence(1, M);
 
@@ -126,15 +128,15 @@ void TestParallelAdd()
 
 		auto set = std::set(randomSequence.begin(), randomSequence.end());
 
-		assert(list.size() == set.size());
+		REQUIRE(list.size() == set.size());
 		for (auto random : randomSequence)
 		{
-			assert((set.count(random) > 0) == list.contains(random));
+			REQUIRE((set.count(random) > 0) == list.contains(random));
 		}
 	}
 }
 
-void TestSequentialErase()
+TEST_CASE("Sequential erase", "[list]")
 {
 	auto testErase = [](const std::vector<int>& sequence)
 	{
@@ -144,43 +146,41 @@ void TestSequentialErase()
 		{
 			list.insert(i);
 		}
-		assert(list.size() == N);
+		REQUIRE(list.size() == N);
 
 		for (auto i : sequence)
 		{
 			if (!list.erase(i))
 			{
 				SaveRandomSequence(sequence);
-				assert(false && i);
+				FAIL("Set did not contain " << i);
 			}
 		}
-		assert(list.size() == 0);
+
+		REQUIRE(list.size() == 0);
 
 		for (auto i : sequence)
 		{
 			if (list.contains(i))
 			{
 				SaveRandomSequence(sequence);
-				assert(false && i);
+				FAIL("Set still contains " << i);
 			}
 		}
 	};
 
 	auto ints = std::vector<int>(N);
 	std::iota(std::begin(ints), std::end(ints), 1);
-	std::cout << "Inserting numbers from 1 to N and then erasing them in direct order\n";
-	testErase(ints);
+	DYNAMIC_SECTION("Inserting numbers from 1 to " << N << " and then erasing them in direct order")
+	{
+		testErase(ints);
+	}
 
 	std::random_device rd;
 	std::mt19937 gen(rd());
 	std::shuffle(std::begin(ints), std::end(ints), gen);
-	std::cout << "Inserting numbers from 1 to N and then erasing them in random order\n";
-	testErase(ints);
-}
-
-void TestList()
-{
-	TestSequentialAdd();
-	TestParallelAdd();
-	TestSequentialErase();
+	DYNAMIC_SECTION("Inserting numbers from 1 to " << N << " and then erasing them in random order")
+	{
+		testErase(ints);
+	}
 }
