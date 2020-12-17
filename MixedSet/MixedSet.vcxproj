@@ -144,6 +144,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="Performance.cpp" />
     <ClCompile Include="Test1.cpp" />
     <ClCompile Include="Test2.cpp" />
     <ClCompile Include="TestList.cpp" />
@@ -153,6 +154,7 @@
     <ClInclude Include="HashSet.h" />
     <ClInclude Include="List.h" />
     <ClInclude Include="MixedSet.h" />
+    <ClInclude Include="vec3.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
