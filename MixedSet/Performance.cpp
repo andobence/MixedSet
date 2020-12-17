@@ -39,13 +39,14 @@ template<
 	size_t VecNo,
 	size_t ThreadNo,
 	size_t HalfWidth,
-	int InnerPointsPercentage
+	size_t BlockSize,
+	unsigned InnerPointsPercentage
 >
 double Benchmark()
 {
 	constexpr static int width = 2 * HalfWidth;
 	constexpr static float p = InnerPointsPercentage / 100.f;
-	MixedSet<vec3, Vec3Linearizer<HalfWidth>> set;
+	MixedSet<vec3, Vec3Linearizer<HalfWidth>, BlockSize> set;
 	std::array<std::thread, ThreadNo> threads;
 
 	auto start = std::chrono::system_clock::now();
@@ -71,7 +72,10 @@ double Benchmark()
 
 template<
 	size_t MinThreads,
-	size_t MaxThreads_
+	size_t MaxThreads_,
+	size_t VecNo,
+	size_t BlockSize,
+	unsigned InnerPointsPercentage
 >
 void RunTests()
 {
@@ -79,7 +83,13 @@ void RunTests()
 	auto helper = []<size_t... I>(std::index_sequence<I...> _)
 	{
 		((I >= MinThreads && (
-			std::cout << "#" << I << "  :  " << Benchmark<50'000'000, I, 600, 20>() << std::endl
+			std::cout
+			<< "====================================\n"
+			<< I << " threads\n"
+			<< BlockSize << " block size\n"
+			<< VecNo * InnerPointsPercentage / 100 << " items approx.\n"
+			<< "---> " << Benchmark<50'000'000, I, 600, BlockSize, InnerPointsPercentage>() 
+				<< " seconds" << std::endl
 			)),
 			...);
 	};
@@ -87,7 +97,33 @@ void RunTests()
 	helper(std::make_index_sequence<MaxThreads>());
 }
 
+template<
+	size_t VecNo,
+	unsigned InnerPointsPercentage,
+	size_t BlockSize
+>
+void RunForAllThreads()
+{
+	RunTests<8, 8, VecNo, BlockSize, InnerPointsPercentage>();
+}
+
 void PerformanceTest()
 {
-	RunTests<1, 32>();
+	//RunForAllThreads<50'000'000, 99, 128>();
+	//RunForAllThreads<50'000'000, 80, 128>();
+	//
+	//RunForAllThreads<10'000'000, 60, 128>();
+	//RunForAllThreads<10'000'000, 40, 128>();
+	//RunForAllThreads<10'000'000, 20, 128>();
+
+
+	RunForAllThreads<5'000'000, 80, 2048>();
+	RunForAllThreads<5'000'000, 80, 1024>();
+	RunForAllThreads<5'000'000, 80, 512>();
+	RunForAllThreads<5'000'000, 80, 420>();
+	RunForAllThreads<5'000'000, 80, 256>();
+	RunForAllThreads<5'000'000, 80, 128>();
+	RunForAllThreads<5'000'000, 80, 64>();
+	RunForAllThreads<5'000'000, 80, 16>();
+
 }
