@@ -158,7 +158,7 @@ private:
 		Hash hash = reverse(static_cast<Hash>(newBucketIdx));
 		m_buckets[lowerBucket]->split_after(*newBucket, [&hash](const std::pair<Hash, T>& p)
 		{
-			return p.first >= hash;
+			return p.first < hash;
 		});
 	}
 

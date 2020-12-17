@@ -68,10 +68,58 @@ public:
 	template<typename F>
 	void split_after(List& upperPart, F&& f)
 	{
-		// TODO: cut the list after the last element e for which f(e) is false.
+		UniqueLock currentLock{ m_headMutex };
+		auto currentNode = m_head;
+		UniqueLock nextLock{ currentNode->m_mutex };
+		decltype(currentNode) tail;
+		while (currentNode)
+		{
+			tail = currentNode;
+			currentLock = std::move(nextLock);
+			auto nextNode = currentNode->m_next;
+			if (nextNode) nextLock = UniqueLock{ nextNode->m_mutex };
+
+			auto iter = currentNode->partition_point(std::forward<F>(f));
+			auto currentEnd = currentNode->end();
+			if (iter != currentNode->end())
+			{
+				auto newNode = std::make_shared<Node>();
+				std::copy(iter, currentEnd, newNode->begin());
+				newNode->m_size = currentEnd - iter;
+				newNode->m_next = nextNode;
+				currentNode->m_size = iter - currentNode->begin();
+				currentNode->m_next = nullptr;
+				upperPart.m_head = std::move(newNode);
+				upperPart.recalculateSize();
+				m_size -= upperPart.m_size;
+				return;
+			}
+
+			currentNode = nextNode;
+		}
+
+		// If the partition point wasn't found until this point,
+		// return an empty list as the second partition
+		upperPart.m_head = std::make_shared<Node>();
+		upperPart.m_size = 0;
 	}
 
 private:
+	void recalculateSize()
+	{
+		std::size_t size{ 0 };
+		SharedLock currentLock;
+		auto currentNode = m_head;
+		while (currentNode)
+		{
+			size += currentNode->size();
+			auto nextNode = currentNode->m_next;
+			currentLock = SharedLock{ nextNode->m_mutex };
+			currentNode = nextNode;
+		}
+		m_size = size;
+	}
+
 	bool insert_private(const T& value)
 	{
 		UniqueLock currentLock{ m_headMutex };
@@ -193,9 +241,20 @@ private:
 			return begin() + m_size;
 		}
 
+		auto size() -> std::size_t
+		{
+			return end() - begin();
+		}
+
 		auto find(const T& value)
 		{
 			return std::lower_bound(begin(), end(), value, Less());
+		}
+
+		template<typename Predicate>
+		auto partition_point(Predicate&& p)
+		{
+			return std::partition_point(begin(), end(), std::forward<Predicate>(p));
 		}
 
 		void insert(const T& value, typename decltype(m_contents)::iterator iter)
