@@ -2,7 +2,7 @@
 #include "BitVectorSet.h"
 #include "HashSet.h"
 
-template<typename T, typename Linearizer>
+template<typename T, typename Linearizer, std::size_t BlockSize = 128, class Hasher = std::hash<T>>
 class MixedSet
 {
 public:
@@ -44,5 +44,5 @@ public:
 private:
 	Linearizer m_linearizer;
 	BitVectorSet m_bitvector;
-	HashSet<T> m_set;
+	HashSet<T, BlockSize, Hasher> m_set;
 };

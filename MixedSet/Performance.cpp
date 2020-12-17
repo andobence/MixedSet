@@ -78,18 +78,10 @@ void RunTests()
 	constexpr static size_t MaxThreads = MaxThreads_ + 1;
 	auto helper = []<size_t... I>(std::index_sequence<I...> _)
 	{
-		std::array<double, MaxThreads> results;
-
 		((I >= MinThreads && (
-			results[I] = Benchmark<100000000, I, 600, 100>(),
-			std::cout << I << "\n"
+			std::cout << "#" << I << "  :  " << Benchmark<50'000'000, I, 600, 20>() << std::endl
 			)),
 			...);
-
-		for (size_t i = MinThreads; i < MaxThreads; ++i)
-		{
-			std::cout << "#" << i << "  :  " << results[i] << std::endl;
-		}
 	};
 
 	helper(std::make_index_sequence<MaxThreads>());
@@ -97,5 +89,5 @@ void RunTests()
 
 void PerformanceTest()
 {
-	RunTests<1, 16>();
+	RunTests<1, 32>();
 }

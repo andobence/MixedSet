@@ -146,20 +146,24 @@ public:
 	template<typename F>
 	void split_after(List& upperPart, F&& f)
 	{
-		UniqueLock currentLock{ m_headMutex };
 		auto currentNode = m_head;
-		UniqueLock nextLock{ currentNode->m_mutex };
-		decltype(currentNode) tail;
+		decltype(currentNode) prev;
 		while (currentNode)
 		{
-			tail = currentNode;
-			currentLock = std::move(nextLock);
 			auto nextNode = currentNode->m_next;
-			if (nextNode) nextLock = UniqueLock{ nextNode->m_mutex };
 
 			auto iter = currentNode->partition_point(std::forward<F>(f));
 			auto currentEnd = currentNode->end();
-			if (iter != currentNode->end())
+
+			if (iter == currentNode->begin())
+			{
+				upperPart.m_head = currentNode;
+				if (prev)
+					prev->m_next = nullptr;
+				else
+					m_head = std::make_shared<Node>();
+			}
+			else if (iter != currentNode->end())
 			{
 				auto newNode = std::make_shared<Node>();
 				std::copy(iter, currentEnd, newNode->begin());
@@ -171,6 +175,7 @@ public:
 				return;
 			}
 
+			prev = currentNode;
 			currentNode = nextNode;
 		}
 
@@ -240,7 +245,7 @@ private:
 			std::size_t pos = iter - m_contents.begin();
 			std::size_t midPos = m_size / 2;
 
-			if (pos < midPos)
+			if (pos <= midPos)
 			{
 				std::copy(
 					m_contents.begin() + midPos,
