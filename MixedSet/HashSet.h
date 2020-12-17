@@ -32,7 +32,7 @@ class HashSet
 	using Mutex = std::shared_mutex;
 	using UniqueLock = std::unique_lock<Mutex>;
 	using SharedLock = std::shared_lock<Mutex>;
-	using Hash = uint64_t;
+	using Hash = uint32_t;
 	using Bucket = List<std::pair<Hash, T>, BlockSize>;
 
 public:
@@ -48,8 +48,8 @@ public:
 
 	bool insert(T elem)
 	{
-		auto hash = m_hasher(elem);
-		auto reverseHash = reverse(hash);
+		Hash hash = static_cast<Hash>(m_hasher(elem));
+		Hash reverseHash = reverse(hash);
 
 		SharedLock lock{ m_bucketsMutex };
 
@@ -64,13 +64,13 @@ public:
 			try_extend_buckets();
 		}
 
-		return ret;
+		return ret; 
 	}
 
 	bool erase(const T& elem)
 	{
-		auto hash = m_hasher(elem);
-		auto reverseHash = reverse(hash);
+		Hash hash = static_cast<Hash>(m_hasher(elem));
+		Hash reverseHash = reverse(hash);
 
 		SharedLock lock{ m_bucketsMutex };
 
@@ -84,8 +84,8 @@ public:
 
 	bool contains(const T& elem)
 	{
-		auto hash = m_hasher(elem);
-		auto reverseHash = reverse(hash);
+		Hash hash = static_cast<Hash>(m_hasher(elem));
+		Hash reverseHash = reverse(hash);
 
 		SharedLock lock{ m_bucketsMutex };
 

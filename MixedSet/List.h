@@ -19,108 +19,12 @@ class List
 
 public:
 	List()
-		:m_head{ std::make_shared<Node>() },
-		m_size{ 0 }
+		:m_head{ std::make_shared<Node>() }
 	{
 
 	}
 
 	bool insert(const T& value)
-	{
-		bool ret = insert_private(value);
-		if (ret) ++m_size;
-		return ret;
-	}
-
-	bool erase(const T& value)
-	{
-		bool ret = erase_private(value);
-		if (ret) --m_size;
-		return ret;
-	}
-
-	bool contains(const T& value) const
-	{
-		SharedLock currentLock{ m_headMutex }, nextLock;
-		auto currentNode = m_head;
-		if (currentNode) nextLock = SharedLock{ currentNode->m_mutex };
-		while (currentNode)
-		{
-			currentLock = std::move(nextLock);
-			auto nextNode = currentNode->m_next;
-			if (nextNode)
-				nextLock = SharedLock{ nextNode->m_mutex };
-
-			auto valueIter = currentNode->find(value);
-			if (valueIter != currentNode->end() && *valueIter == value)
-				return true;
-
-			currentNode = nextNode;
-		}
-		return false;
-	}
-
-	std::size_t size() const
-	{
-		return m_size.load();
-	}
-
-	template<typename F>
-	void split_after(List& upperPart, F&& f)
-	{
-		UniqueLock currentLock{ m_headMutex };
-		auto currentNode = m_head;
-		UniqueLock nextLock{ currentNode->m_mutex };
-		decltype(currentNode) tail;
-		while (currentNode)
-		{
-			tail = currentNode;
-			currentLock = std::move(nextLock);
-			auto nextNode = currentNode->m_next;
-			if (nextNode) nextLock = UniqueLock{ nextNode->m_mutex };
-
-			auto iter = currentNode->partition_point(std::forward<F>(f));
-			auto currentEnd = currentNode->end();
-			if (iter != currentNode->end())
-			{
-				auto newNode = std::make_shared<Node>();
-				std::copy(iter, currentEnd, newNode->begin());
-				newNode->m_size = currentEnd - iter;
-				newNode->m_next = nextNode;
-				currentNode->m_size = iter - currentNode->begin();
-				currentNode->m_next = nullptr;
-				upperPart.m_head = std::move(newNode);
-				upperPart.recalculateSize();
-				m_size -= upperPart.m_size;
-				return;
-			}
-
-			currentNode = nextNode;
-		}
-
-		// If the partition point wasn't found until this point,
-		// return an empty list as the second partition
-		upperPart.m_head = std::make_shared<Node>();
-		upperPart.m_size = 0;
-	}
-
-private:
-	void recalculateSize()
-	{
-		std::size_t size{ 0 };
-		SharedLock currentLock;
-		auto currentNode = m_head;
-		while (currentNode)
-		{
-			size += currentNode->size();
-			auto nextNode = currentNode->m_next;
-			currentLock = SharedLock{ nextNode->m_mutex };
-			currentNode = nextNode;
-		}
-		m_size = size;
-	}
-
-	bool insert_private(const T& value)
 	{
 		UniqueLock currentLock{ m_headMutex };
 		auto currentNode = m_head;
@@ -166,7 +70,7 @@ private:
 		return true;
 	}
 
-	bool erase_private(const T& value)
+	bool erase(const T& value)
 	{
 		UniqueLock prevLock, currentLock{ m_headMutex };
 		auto currentNode = m_head;
@@ -198,17 +102,17 @@ private:
 				currentLock.unlock();
 				return true;
 			}
-			else 
-            {
-                if (auto nextNode = currentNode->m_next)
-                {
-                    auto nextLock = SharedLock{ nextNode->m_mutex };
-                    if (nextNode->m_contents.front() > value)
-                    {
-                        return false;
-                    }
-                }
-            }
+			else
+			{
+				if (auto nextNode = currentNode->m_next)
+				{
+					auto nextLock = SharedLock{ nextNode->m_mutex };
+					if (nextNode->m_contents.front() > value)
+					{
+						return false;
+					}
+				}
+			}
 
 			prevNode = currentNode;
 			currentNode = currentNode->m_next;
@@ -216,6 +120,66 @@ private:
 
 		return false;
 	}
+
+
+	bool contains(const T& value) const
+	{
+		SharedLock currentLock{ m_headMutex }, nextLock;
+		auto currentNode = m_head;
+		if (currentNode) nextLock = SharedLock{ currentNode->m_mutex };
+		while (currentNode)
+		{
+			currentLock = std::move(nextLock);
+			auto nextNode = currentNode->m_next;
+			if (nextNode)
+				nextLock = SharedLock{ nextNode->m_mutex };
+
+			auto valueIter = currentNode->find(value);
+			if (valueIter != currentNode->end() && *valueIter == value)
+				return true;
+
+			currentNode = nextNode;
+		}
+		return false;
+	}
+
+	template<typename F>
+	void split_after(List& upperPart, F&& f)
+	{
+		UniqueLock currentLock{ m_headMutex };
+		auto currentNode = m_head;
+		UniqueLock nextLock{ currentNode->m_mutex };
+		decltype(currentNode) tail;
+		while (currentNode)
+		{
+			tail = currentNode;
+			currentLock = std::move(nextLock);
+			auto nextNode = currentNode->m_next;
+			if (nextNode) nextLock = UniqueLock{ nextNode->m_mutex };
+
+			auto iter = currentNode->partition_point(std::forward<F>(f));
+			auto currentEnd = currentNode->end();
+			if (iter != currentNode->end())
+			{
+				auto newNode = std::make_shared<Node>();
+				std::copy(iter, currentEnd, newNode->begin());
+				newNode->m_size = currentEnd - iter;
+				newNode->m_next = nextNode;
+				currentNode->m_size = iter - currentNode->begin();
+				currentNode->m_next = nullptr;
+				upperPart.m_head = std::move(newNode);
+				return;
+			}
+
+			currentNode = nextNode;
+		}
+
+		// If the partition point wasn't found until this point,
+		// return an empty list as the second partition
+		upperPart.m_head = std::make_shared<Node>();
+	}
+
+private:
 
 	struct Node
 	{
@@ -317,5 +281,4 @@ private:
 
 	mutable Mutex m_headMutex;
 	std::shared_ptr<Node> m_head;
-	std::atomic<std::size_t> m_size;
 };

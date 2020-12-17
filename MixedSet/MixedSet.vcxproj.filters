@@ -43,5 +43,6 @@
     <ClInclude Include="catch.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="Test.h" />
   </ItemGroup>
 </Project>

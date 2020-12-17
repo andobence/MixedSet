@@ -1,8 +1,8 @@
 #include "List.h"
+#include "Test.h"
 
 #include <iostream>
 #include <type_traits>
-#include <random>
 #include <set>
 #include <vector>
 #include <fstream>
@@ -14,13 +14,6 @@ namespace
 	auto IntList()
 	{
 		return List<int>();
-	}
-	auto RandInt(int from, int to)
-	{
-		thread_local std::random_device rd;
-		thread_local std::mt19937 gen(rd());
-		std::uniform_int_distribution<> distrib(from, to);
-		return distrib(gen);
 	}
 
 	constexpr auto testFname = "test.txt";
@@ -58,8 +51,6 @@ TEST_CASE("Sequential add", "[list]")
 			list.insert(i);
 		}
 
-		REQUIRE(list.size() == N);
-
 		for (int i = 1; i <= N; ++i)
 		{
 			REQUIRE(list.contains(i));
@@ -89,8 +80,6 @@ TEST_CASE("Sequential add", "[list]")
 				REQUIRE(insertedIntoSet != insertedIntoList);
 			}
 		}
-
-		REQUIRE(set.size() == list.size());
 	}
 
 	DYNAMIC_SECTION("Inserting numbers from " << N << " to 1")
@@ -101,8 +90,6 @@ TEST_CASE("Sequential add", "[list]")
 		{
 			list.insert(i);
 		}
-
-		REQUIRE(list.size() == N);
 
 		for (int i = N; i >= 1; --i)
 		{
@@ -128,7 +115,6 @@ TEST_CASE("Parallel add", "[list]")
 
 		auto set = std::set(randomSequence.begin(), randomSequence.end());
 
-		REQUIRE(list.size() == set.size());
 		for (auto random : randomSequence)
 		{
 			REQUIRE((set.count(random) > 0) == list.contains(random));
@@ -146,7 +132,6 @@ TEST_CASE("Sequential erase", "[list]")
 		{
 			list.insert(i);
 		}
-		REQUIRE(list.size() == N);
 
 		for (auto i : sequence)
 		{
@@ -156,8 +141,6 @@ TEST_CASE("Sequential erase", "[list]")
 				FAIL("Set did not contain " << i);
 			}
 		}
-
-		REQUIRE(list.size() == 0);
 
 		for (auto i : sequence)
 		{

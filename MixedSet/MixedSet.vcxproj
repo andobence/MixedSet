@@ -154,6 +154,7 @@
     <ClInclude Include="HashSet.h" />
     <ClInclude Include="List.h" />
     <ClInclude Include="MixedSet.h" />
+    <ClInclude Include="Test.h" />
     <ClInclude Include="vec3.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
