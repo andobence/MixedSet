@@ -137,6 +137,11 @@ void TestSetInsertErase(Set set)
 	}
 
 	CHECK(less0 >= 0);
+	if (above0 > 0)
+	{
+		CAPTURE(less0, equal0, above0);
+		WARN("above0 > 0");
+	}
 }
 
 TEMPLATE_TEST_CASE("Parallel insert and erase", "[set][template]", TestBitVector, (HashSet<int>), (MixedSet<int, TestLinearizer>))
