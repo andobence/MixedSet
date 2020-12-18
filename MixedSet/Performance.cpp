@@ -2,6 +2,9 @@
 #include "vec3.h"
 #include "Test.h"
 
+#include <functional>
+#include <string>
+
 namespace
 {
 	// Generate a random vec3 of which coordinates
@@ -36,24 +39,22 @@ namespace
 }
 
 template<
-	size_t VecNo,
-	size_t ThreadNo,
 	size_t HalfWidth,
 	size_t BlockSize,
 	unsigned InnerPointsPercentage
 >
-double Benchmark()
+double Benchmark(size_t vecNo, size_t threadNo)
 {
 	constexpr static int width = 2 * HalfWidth;
 	constexpr static float p = InnerPointsPercentage / 100.f;
 	MixedSet<vec3, Vec3Linearizer<HalfWidth>, BlockSize> set;
-	std::array<std::thread, ThreadNo> threads;
+	std::vector<std::thread> threads(threadNo);
 
 	auto start = std::chrono::system_clock::now();
 
 	for (auto& thread : threads)
 	{
-		thread = std::thread([&set, N = VecNo / ThreadNo]() mutable
+		thread = std::thread([&set, N = vecNo / threadNo]() mutable
 		{
 			while (N--) set.insert(RandomVec3(HalfWidth, p));
 		});
@@ -71,59 +72,70 @@ double Benchmark()
 }
 
 template<
-	size_t MinThreads,
-	size_t MaxThreads_,
-	size_t VecNo,
+	size_t HalfWidth,
 	size_t BlockSize,
 	unsigned InnerPointsPercentage
 >
-void RunTests()
+void RunTests(size_t vecNo, size_t minThreads, size_t maxThreads)
 {
-	constexpr static size_t MaxThreads = MaxThreads_ + 1;
-	auto helper = []<size_t... I>(std::index_sequence<I...> _)
+	for (size_t i = minThreads; i <= maxThreads; ++i)
 	{
-		((I >= MinThreads && (
-			std::cout
+		size_t inner = vecNo * InnerPointsPercentage / 100;
+		size_t outer = vecNo - inner;
+		std::cout
 			<< "====================================\n"
-			<< I << " threads\n"
+			<< i << " threads\n"
 			<< BlockSize << " block size\n"
-			<< VecNo * InnerPointsPercentage / 100 << " items approx.\n"
-			<< "---> " << Benchmark<50'000'000, I, 600, BlockSize, InnerPointsPercentage>() 
-				<< " seconds" << std::endl
-			)),
-			...);
-	};
-
-	helper(std::make_index_sequence<MaxThreads>());
+			<< inner << " inner points approx.\n"
+			<< outer << " outer points approx.\n"
+			<< Benchmark<HalfWidth, BlockSize, InnerPointsPercentage>(vecNo, i)
+			<< " seconds" << std::endl;
+	}
 }
 
 template<
-	size_t VecNo,
+	size_t HalfWidth,
 	unsigned InnerPointsPercentage,
 	size_t BlockSize
 >
-void RunForAllThreads()
+void RunForAllThreads(size_t vecNo)
 {
-	RunTests<8, 8, VecNo, BlockSize, InnerPointsPercentage>();
+	size_t threadNo = 2 * std::thread::hardware_concurrency();
+	RunTests<HalfWidth, BlockSize, InnerPointsPercentage>(vecNo, threadNo, threadNo);
 }
-
 void PerformanceTest()
 {
-	//RunForAllThreads<50'000'000, 99, 128>();
-	//RunForAllThreads<50'000'000, 80, 128>();
-	//
-	//RunForAllThreads<10'000'000, 60, 128>();
-	//RunForAllThreads<10'000'000, 40, 128>();
-	//RunForAllThreads<10'000'000, 20, 128>();
+	constexpr size_t vecNo = 100'000'000;
 
+	auto title = [](std::string_view str)
+	{
+		std::cout << "\n\n\n =======" << str << " ======= \n";
+	};
 
-	RunForAllThreads<5'000'000, 80, 2048>();
-	RunForAllThreads<5'000'000, 80, 1024>();
-	RunForAllThreads<5'000'000, 80, 512>();
-	RunForAllThreads<5'000'000, 80, 420>();
-	RunForAllThreads<5'000'000, 80, 256>();
-	RunForAllThreads<5'000'000, 80, 128>();
-	RunForAllThreads<5'000'000, 80, 64>();
-	RunForAllThreads<5'000'000, 80, 16>();
+	title("Testing for block size");
+	RunForAllThreads<600, 0, 2048>(vecNo);
+	RunForAllThreads<600, 0, 1024>(vecNo);
+	RunForAllThreads<600, 0, 512> (vecNo);
+	RunForAllThreads<600, 0, 256> (vecNo);
+	RunForAllThreads<600, 0, 128> (vecNo);
+	RunForAllThreads<600, 0, 64>  (vecNo);
+	RunForAllThreads<600, 0, 32>  (vecNo);
+	RunForAllThreads<600, 0, 16>  (vecNo);
+	
+	size_t threadNo = std::thread::hardware_concurrency();
+	title("Running with multiple threads, from 1 to " + std::to_string(threadNo));
+	RunTests<600, 256, 0>(vecNo, 1, size_t(threadNo * 2));
 
+	title("Testing for different point distributions");
+	RunForAllThreads<600,   0, 256>(vecNo);
+	RunForAllThreads<600,  10, 256>(vecNo);
+	RunForAllThreads<600,  20, 256>(vecNo);
+	RunForAllThreads<600,  30, 256>(vecNo);
+	RunForAllThreads<600,  40, 256>(vecNo);
+	RunForAllThreads<600,  50, 256>(vecNo);
+	RunForAllThreads<600,  60, 256>(vecNo);
+	RunForAllThreads<600,  70, 256>(vecNo);
+	RunForAllThreads<600,  80, 256>(vecNo);
+	RunForAllThreads<600,  90, 256>(vecNo);
+	RunForAllThreads<600, 100, 256>(vecNo);
 }
