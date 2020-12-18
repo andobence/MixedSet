@@ -43,11 +43,12 @@ template<
 	size_t BlockSize,
 	unsigned InnerPointsPercentage
 >
-double Benchmark(size_t vecNo, size_t threadNo)
+double Benchmark(size_t vecNo, size_t threadNo, float maxLoadFactor)
 {
 	constexpr static int width = 2 * HalfWidth;
 	constexpr static float p = InnerPointsPercentage / 100.f;
 	MixedSet<vec3, Vec3Linearizer<HalfWidth>, BlockSize> set;
+	set.max_load_factor(maxLoadFactor);
 	std::vector<std::thread> threads(threadNo);
 
 	auto start = std::chrono::system_clock::now();
@@ -76,7 +77,7 @@ template<
 	size_t BlockSize,
 	unsigned InnerPointsPercentage
 >
-void RunTests(size_t vecNo, size_t minThreads, size_t maxThreads)
+void RunTests(size_t vecNo, size_t minThreads, size_t maxThreads, float maxLoadFactor = 512.)
 {
 	for (size_t i = minThreads; i <= maxThreads; ++i)
 	{
@@ -88,7 +89,8 @@ void RunTests(size_t vecNo, size_t minThreads, size_t maxThreads)
 			<< BlockSize << " block size\n"
 			<< inner << " inner points approx.\n"
 			<< outer << " outer points approx.\n"
-			<< Benchmark<HalfWidth, BlockSize, InnerPointsPercentage>(vecNo, i)
+			<< maxLoadFactor << " max load factor.\n"
+			<< Benchmark<HalfWidth, BlockSize, InnerPointsPercentage>(vecNo, i, maxLoadFactor)
 			<< " seconds" << std::endl;
 	}
 }
@@ -98,10 +100,10 @@ template<
 	unsigned InnerPointsPercentage,
 	size_t BlockSize
 >
-void RunForAllThreads(size_t vecNo)
+void RunForAllThreads(size_t vecNo, float maxLoadFactor = 512.)
 {
 	size_t threadNo = 2 * std::thread::hardware_concurrency();
-	RunTests<HalfWidth, BlockSize, InnerPointsPercentage>(vecNo, threadNo, threadNo);
+	RunTests<HalfWidth, BlockSize, InnerPointsPercentage>(vecNo, threadNo, threadNo, maxLoadFactor);
 }
 void PerformanceTest()
 {
@@ -121,7 +123,18 @@ void PerformanceTest()
 	RunForAllThreads<600, 0, 64>  (vecNo);
 	RunForAllThreads<600, 0, 32>  (vecNo);
 	RunForAllThreads<600, 0, 16>  (vecNo);
-	
+
+	title("Testing for max load factor");
+	RunForAllThreads<600, 0, 256>(vecNo, 128.);
+	RunForAllThreads<600, 0, 256>(vecNo, 256.);
+	RunForAllThreads<600, 0, 256>(vecNo, 512.);
+	RunForAllThreads<600, 0, 256>(vecNo, 768.);
+	RunForAllThreads<600, 0, 256>(vecNo, 1024.);
+	RunForAllThreads<600, 0, 256>(vecNo, 1280.);
+	RunForAllThreads<600, 0, 256>(vecNo, 1536.);
+	RunForAllThreads<600, 0, 256>(vecNo, 2048.);
+	RunForAllThreads<600, 0, 256>(vecNo, 4096.);
+
 	size_t threadNo = std::thread::hardware_concurrency();
 	title("Running with multiple threads, from 1 to " + std::to_string(threadNo));
 	RunTests<600, 256, 0>(vecNo, 1, size_t(threadNo * 2));

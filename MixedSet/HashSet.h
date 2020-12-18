@@ -167,5 +167,5 @@ private:
 	mutable Mutex m_bucketsMutex;
 	Hasher m_hasher;
 
-	std::atomic<float> m_maxLoadFactor = 512.;
+	std::atomic<float> m_maxLoadFactor = 768.;
 };

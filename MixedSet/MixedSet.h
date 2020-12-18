@@ -41,6 +41,16 @@ public:
 			return m_set.contains(std::move(elem));
 	}
 
+	float max_load_factor() const
+	{
+		return m_set.max_load_factor();
+	}
+
+	void max_load_factor(float ml)
+	{
+		m_set.max_load_factor(ml);
+	}
+
 private:
 	Linearizer m_linearizer;
 	BitVectorSet m_bitvector;
